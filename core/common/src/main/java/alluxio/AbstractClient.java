@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.UnresolvedAddressException;
+import java.time.Duration;
 import java.util.function.Supplier;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -396,6 +397,7 @@ public abstract class AbstractClient implements Client {
   private synchronized <V> V retryRPCInternal(RetryPolicy retryPolicy, RpcCallable<V> rpc,
       Supplier<Void> onRetry) throws AlluxioStatusException {
     Exception ex = null;
+    long startMs = System.currentTimeMillis();
     while (retryPolicy.attempt()) {
       if (mClosed) {
         throw new FailedPreconditionException("Client is closed");
@@ -414,12 +416,16 @@ public abstract class AbstractClient implements Client {
           throw se;
         }
       }
-      LOG.debug("Rpc failed ({}): {}", retryPolicy.getAttemptCount(), ex.toString());
+      LOG.debug("Rpc failed ({}-{}): {}", retryPolicy.getAttemptCount(),
+          Duration.ofMillis(System.currentTimeMillis() - startMs).toString(), ex.toString());
       onRetry.get();
       disconnect();
     }
-    throw new UnavailableException("Failed after " + retryPolicy.getAttemptCount()
-        + " attempts: " + ex.toString(), ex);
+    throw new UnavailableException(
+        "Failed after " + retryPolicy.getAttemptCount() + " attempts and duration("
+            + Duration.ofMillis(System.currentTimeMillis() - startMs).toString() + "): "
+            + ex.toString(),
+        ex);
   }
 
   // TODO(calvin): General tag logic should be in getMetricName

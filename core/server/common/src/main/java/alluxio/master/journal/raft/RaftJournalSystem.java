@@ -450,6 +450,7 @@ public class RaftJournalSystem extends AbstractJournalSystem {
 
   @Override
   public synchronized void gainPrimacy() {
+    LOG.info("Raft journal transitioning to primary.");
     mSnapshotAllowed.set(false);
     LocalFirstRaftClient client = new LocalFirstRaftClient(mServer, this::createClient,
         mRawClientId, ServerConfiguration.global());
@@ -479,10 +480,12 @@ public class RaftJournalSystem extends AbstractJournalSystem {
     mAsyncJournalWriter
         .set(new AsyncJournalWriter(mRaftJournalWriter, () -> getJournalSinks(null)));
     mTransferLeaderAllowed.set(true);
+    LOG.info("Raft journal transitioned to primary.");
   }
 
   @Override
   public synchronized void losePrimacy() {
+    LOG.info("Raft journal transitioning to secondary.");
     if (mServer.getLifeCycleState() != LifeCycle.State.RUNNING) {
       // Avoid duplicate shut down Ratis server
       return;
@@ -523,7 +526,7 @@ public class RaftJournalSystem extends AbstractJournalSystem {
           mConf.getClusterAddresses()), e);
     }
 
-    LOG.info("Raft server successfully restarted");
+    LOG.info("Raft journal transitioned to secondary.");
   }
 
   @Override
