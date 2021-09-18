@@ -34,6 +34,7 @@ message FileSystemMasterCommonPOptions {
   optional int64 syncIntervalMs = 1;
   optional int64 ttl = 2;
   optional grpc.TtlAction ttlAction = 3;
+  optional string opId = 4;
 }
 
 message CheckAccessPRequest {

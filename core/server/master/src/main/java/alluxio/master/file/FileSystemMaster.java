@@ -600,4 +600,12 @@ public interface FileSystemMaster extends Master {
    * @return the list of thread identifiers that are waiting and holding the state lock
    */
   List<String> getStateLockSharedWaitersAndHolders();
+
+  /**
+   * whether given op is complete.
+   *
+   * @param op op id
+   * @return {@code true} if given op is complete
+   */
+  boolean isOpComplete(String op);
 }

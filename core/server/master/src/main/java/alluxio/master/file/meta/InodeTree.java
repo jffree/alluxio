@@ -223,6 +223,16 @@ public class InodeTree implements DelegatingJournaled {
   }
 
   /**
+   * whether given op is complete.
+   *
+   * @param op op id
+   * @return {@code true} if given op is complete
+   */
+  public boolean isOpComplete(String op) {
+    return mState.isOpComplete(op);
+  }
+
+  /**
    * Initializes the root of the inode tree.
    *
    * @param owner the root owner

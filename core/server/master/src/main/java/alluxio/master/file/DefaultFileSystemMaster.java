@@ -1513,6 +1513,11 @@ public final class DefaultFileSystemMaster extends CoreMaster
     Metrics.FILES_COMPLETED.inc();
   }
 
+  @Override
+  public boolean isOpComplete(String op) {
+    return mInodeTree.isOpComplete(op);
+  }
+
   /**
    * Commits blocks to BlockMaster for given block list.
    *

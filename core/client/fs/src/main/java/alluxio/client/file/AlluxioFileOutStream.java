@@ -24,6 +24,7 @@ import alluxio.exception.ExceptionMessage;
 import alluxio.exception.PreconditionMessage;
 import alluxio.exception.status.UnavailableException;
 import alluxio.grpc.CompleteFilePOptions;
+import alluxio.grpc.FileSystemMasterCommonPOptions;
 import alluxio.metrics.MetricKey;
 import alluxio.metrics.MetricsSystem;
 import alluxio.resource.CloseableResource;
@@ -41,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.annotation.concurrent.ThreadSafe;
@@ -142,6 +144,8 @@ public class AlluxioFileOutStream extends FileOutStream {
       }
 
       CompleteFilePOptions.Builder optionsBuilder = CompleteFilePOptions.newBuilder();
+      optionsBuilder.setCommonOptions(FileSystemMasterCommonPOptions.newBuilder()
+          .setOpId(UUID.randomUUID().toString()).buildPartial());
       if (mUnderStorageType.isSyncPersist()) {
         if (mCanceled) {
           mUnderStorageOutputStream.cancel();
