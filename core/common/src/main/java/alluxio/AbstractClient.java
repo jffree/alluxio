@@ -410,6 +410,7 @@ public abstract class AbstractClient implements Client {
         if (se.getStatusCode() == Status.Code.UNAVAILABLE
             || se.getStatusCode() == Status.Code.CANCELLED
             || se.getStatusCode() == Status.Code.UNAUTHENTICATED
+            || se.getStatusCode() == Status.Code.DEADLINE_EXCEEDED
             || e.getCause() instanceof UnresolvedAddressException) {
           ex = se;
         } else {

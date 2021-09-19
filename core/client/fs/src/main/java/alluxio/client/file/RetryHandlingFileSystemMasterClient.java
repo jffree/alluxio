@@ -77,6 +77,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -121,7 +122,8 @@ public final class RetryHandlingFileSystemMasterClient extends AbstractMasterCli
 
   @Override
   protected void afterConnect() {
-    mClient = FileSystemMasterClientServiceGrpc.newBlockingStub(mChannel);
+    mClient = FileSystemMasterClientServiceGrpc.newBlockingStub(mChannel).withDeadlineAfter(30,
+        TimeUnit.SECONDS);
   }
 
   @Override
