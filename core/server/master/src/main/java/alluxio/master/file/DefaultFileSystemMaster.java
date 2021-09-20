@@ -167,6 +167,7 @@ import alluxio.wire.FileBlockInfo;
 import alluxio.wire.FileInfo;
 import alluxio.wire.FileSystemCommand;
 import alluxio.wire.FileSystemCommandOptions;
+import alluxio.wire.FsOpId;
 import alluxio.wire.MountPointInfo;
 import alluxio.wire.PersistCommandOptions;
 import alluxio.wire.PersistFile;
@@ -1514,7 +1515,7 @@ public final class DefaultFileSystemMaster extends CoreMaster
   }
 
   @Override
-  public boolean isOpComplete(String op) {
+  public boolean isOpComplete(FsOpId op) {
     return mInodeTree.isOpComplete(op);
   }
 

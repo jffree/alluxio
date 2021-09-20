@@ -88,6 +88,7 @@ import alluxio.master.file.contexts.ScheduleAsyncPersistenceContext;
 import alluxio.master.file.contexts.SetAclContext;
 import alluxio.master.file.contexts.SetAttributeContext;
 import alluxio.underfs.UfsMode;
+import alluxio.wire.FsOpId;
 import alluxio.wire.MountPointInfo;
 import alluxio.wire.SyncPointInfo;
 
@@ -447,7 +448,7 @@ public final class FileSystemMasterClientServiceHandler
 
   private boolean checkOperationComplete(FileSystemMasterCommonPOptions commonOpts) {
     return commonOpts != null && commonOpts.hasOpId()
-        && mFileSystemMaster.isOpComplete(commonOpts.getOpId());
+        && mFileSystemMaster.isOpComplete(FsOpId.fromFsProto(commonOpts.getOpId()));
   }
 
   /**

@@ -37,6 +37,7 @@ import alluxio.grpc.TtlAction;
 import alluxio.grpc.UnmountPOptions;
 import alluxio.grpc.WritePType;
 import alluxio.security.authorization.Mode;
+import alluxio.wire.FsOpId;
 
 import java.util.UUID;
 
@@ -155,11 +156,14 @@ public class FileSystemOptions {
    * @return options based on the configuration
    */
   public static FileSystemMasterCommonPOptions commonDefaultsWithOpId(AlluxioConfiguration conf) {
-    return FileSystemMasterCommonPOptions.newBuilder()
+    FileSystemMasterCommonPOptions.Builder builder = FileSystemMasterCommonPOptions.newBuilder()
         .setSyncIntervalMs(conf.getMs(PropertyKey.USER_FILE_METADATA_SYNC_INTERVAL))
         .setTtl(conf.getMs(PropertyKey.USER_FILE_CREATE_TTL))
-        .setTtlAction(conf.getEnum(PropertyKey.USER_FILE_CREATE_TTL_ACTION, TtlAction.class))
-        .setOpId(UUID.randomUUID().toString()).build();
+        .setTtlAction(conf.getEnum(PropertyKey.USER_FILE_CREATE_TTL_ACTION, TtlAction.class));
+    if (conf.getBoolean(PropertyKey.USER_FILE_INCLUDE_OPERATION_ID)) {
+      builder.setOpId(new FsOpId(UUID.randomUUID()).toFsProto());
+    }
+    return builder.build();
   }
 
   /**

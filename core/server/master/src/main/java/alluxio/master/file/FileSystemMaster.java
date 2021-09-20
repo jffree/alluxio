@@ -50,6 +50,7 @@ import alluxio.underfs.UfsMode;
 import alluxio.wire.FileBlockInfo;
 import alluxio.wire.FileInfo;
 import alluxio.wire.FileSystemCommand;
+import alluxio.wire.FsOpId;
 import alluxio.wire.MountPointInfo;
 import alluxio.wire.SyncPointInfo;
 import alluxio.wire.UfsInfo;
@@ -607,5 +608,5 @@ public interface FileSystemMaster extends Master {
    * @param op op id
    * @return {@code true} if given op is complete
    */
-  boolean isOpComplete(String op);
+  boolean isOpComplete(FsOpId op);
 }

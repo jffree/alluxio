@@ -31,6 +31,7 @@ import alluxio.resource.CloseableResource;
 import alluxio.util.CommonUtils;
 import alluxio.util.FileSystemOptions;
 import alluxio.wire.BlockInfo;
+import alluxio.wire.FsOpId;
 import alluxio.wire.WorkerNetAddress;
 
 import com.codahale.metrics.Counter;
@@ -145,7 +146,7 @@ public class AlluxioFileOutStream extends FileOutStream {
 
       CompleteFilePOptions.Builder optionsBuilder = CompleteFilePOptions.newBuilder();
       optionsBuilder.setCommonOptions(FileSystemMasterCommonPOptions.newBuilder()
-          .setOpId(UUID.randomUUID().toString()).buildPartial());
+          .setOpId(new FsOpId(UUID.randomUUID()).toFsProto()).buildPartial());
       if (mUnderStorageType.isSyncPersist()) {
         if (mCanceled) {
           mUnderStorageOutputStream.cancel();

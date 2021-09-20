@@ -11,6 +11,8 @@
 
 package alluxio.master.file.meta;
 
+import static alluxio.conf.PropertyKey.MASTER_FILE_SYSTEM_RETRY_CACHE_ENABLED;
+import static alluxio.conf.PropertyKey.MASTER_FILE_SYSTEM_RETRY_CACHE_SIZE;
 import static alluxio.conf.PropertyKey.MASTER_METRICS_FILE_SIZE_DISTRIBUTION_BUCKETS;
 
 import alluxio.ProcessUtils;
@@ -47,6 +49,7 @@ import alluxio.util.FormatUtils;
 import alluxio.util.StreamUtils;
 import alluxio.util.proto.ProtoUtils;
 
+import alluxio.wire.FsOpId;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -80,7 +83,9 @@ public class InodeTreePersistentState implements Journaled {
 
   private final InodeStore mInodeStore;
   private final InodeLockManager mInodeLockManager;
-  private final Cache<String, Boolean> mCache;
+
+  private final boolean mRetryCacheEnabled;
+  private final Cache<FsOpId, Boolean> mCache;
 
   /**
    * A set of inode ids representing pinned inode files. These are not part of the journaled state,
@@ -123,7 +128,9 @@ public class InodeTreePersistentState implements Journaled {
     mBucketCounter = new BucketCounter(
         ServerConfiguration.getList(MASTER_METRICS_FILE_SIZE_DISTRIBUTION_BUCKETS, ",")
             .stream().map(FormatUtils::parseSpaceSize).collect(Collectors.toList()));
-    mCache = CacheBuilder.newBuilder().maximumSize(100000).build();
+    mRetryCacheEnabled = ServerConfiguration.getBoolean(MASTER_FILE_SYSTEM_RETRY_CACHE_ENABLED);
+    mCache = CacheBuilder.newBuilder()
+        .maximumSize(ServerConfiguration.getInt(MASTER_FILE_SYSTEM_RETRY_CACHE_SIZE)).build();
   }
 
   /**
@@ -132,8 +139,8 @@ public class InodeTreePersistentState implements Journaled {
    * @param op op id
    * @return {@code true} if given op is complete
    */
-  public boolean isOpComplete(String op) {
-    return null != mCache.getIfPresent(op);
+  public boolean isOpComplete(FsOpId op) {
+    return mRetryCacheEnabled && (null != mCache.getIfPresent(op));
   }
 
   /**
@@ -196,9 +203,9 @@ public class InodeTreePersistentState implements Journaled {
     // operation holds that lock until after it has appended to the journal.
     try {
       JournalEntry.Builder builder = JournalEntry.newBuilder().setDeleteFile(entry);
-      String opId = getOpId(context);
+      FsOpId opId = getOpId(context);
       if (opId != null) {
-        builder.setFsOpId(opId);
+        builder.setFsOpId(opId.toJournalProto());
       }
       context.get().append(builder.build());
       applyDelete(entry);
@@ -238,9 +245,9 @@ public class InodeTreePersistentState implements Journaled {
     try {
       applyRename(entry);
       JournalEntry.Builder builder = JournalEntry.newBuilder().setRename(entry);
-      String opId = getOpId(context);
+      FsOpId opId = getOpId(context);
       if (opId != null) {
-        builder.setFsOpId(opId);
+        builder.setFsOpId(opId.toJournalProto());
       }
       context.get().append(builder.build());
     } catch (Throwable t) {
@@ -275,9 +282,9 @@ public class InodeTreePersistentState implements Journaled {
     try {
       applyUpdateInode(entry);
       JournalEntry.Builder builder = JournalEntry.newBuilder().setUpdateInode(entry);
-      String opId = getOpId(context);
+      FsOpId opId = getOpId(context);
       if (opId != null) {
-        builder.setFsOpId(opId);
+        builder.setFsOpId(opId.toJournalProto());
       }
       context.get().append(builder.build());
     } catch (Throwable t) {
@@ -331,9 +338,9 @@ public class InodeTreePersistentState implements Journaled {
       applyCreateInode(inode);
       JournalEntry.Builder builder =
           inode.toJournalEntry(Preconditions.checkNotNull(path)).toBuilder();
-      String opId = getOpId(context);
+      FsOpId opId = getOpId(context);
       if (opId != null) {
-        builder.setFsOpId(opId);
+        builder.setFsOpId(opId.toJournalProto());
       }
       context.get().append(builder.build());
     } catch (Throwable t) {
@@ -490,7 +497,7 @@ public class InodeTreePersistentState implements Journaled {
     }
   }
 
-  private String getOpId(Supplier<JournalContext> context) {
+  private FsOpId getOpId(Supplier<JournalContext> context) {
     if (context instanceof RpcContext) {
       return ((RpcContext) context).getOpId();
     }
@@ -729,8 +736,8 @@ public class InodeTreePersistentState implements Journaled {
 
   @Override
   public boolean processJournalEntry(JournalEntry entry) {
-    if (entry.hasFsOpId() && !entry.getFsOpId().isEmpty()) {
-      mCache.put(entry.getFsOpId(), true);
+    if (mRetryCacheEnabled && entry.hasFsOpId()) {
+      mCache.put(FsOpId.fromJournalProto(entry.getFsOpId()), true);
     }
     if (entry.hasDeleteFile()) {
       applyDelete(entry.getDeleteFile());

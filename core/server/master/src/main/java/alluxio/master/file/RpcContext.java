@@ -19,6 +19,7 @@ import alluxio.master.journal.JournalContext;
 import alluxio.master.journal.NoopJournalContext;
 import alluxio.proto.journal.Journal.JournalEntry;
 
+import alluxio.wire.FsOpId;
 import com.google.common.base.Throwables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,7 +115,7 @@ public final class RpcContext implements Closeable, Supplier<JournalContext> {
    *
    * @return the op id
    */
-  public String getOpId() {
+  public FsOpId getOpId() {
     return mOperationContext.getOpId();
   }
 

@@ -17,6 +17,7 @@ import alluxio.grpc.DeletePOptions;
 import alluxio.grpc.RenamePOptions;
 import alluxio.grpc.CompleteFilePOptions;
 
+import alluxio.wire.FsOpId;
 import com.google.protobuf.GeneratedMessageV3;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -70,31 +71,31 @@ public class OperationContext<T extends GeneratedMessageV3.Builder, C extends Op
    * TODO(ggezer) avoid this.
    * @return op-id
    */
-  public String getOpId() {
+  public FsOpId getOpId() {
     if (mOptionsBuilder instanceof CreateFilePOptions.Builder) {
       CreateFilePOptions.Builder cb = (CreateFilePOptions.Builder) mOptionsBuilder;
       if (cb.hasCommonOptions() && cb.getCommonOptions().hasOpId()) {
-        return cb.getCommonOptions().getOpId();
+        return FsOpId.fromFsProto(cb.getCommonOptions().getOpId());
       }
     } else if (mOptionsBuilder instanceof CreateDirectoryPOptions.Builder) {
       CreateDirectoryPOptions.Builder cb = (CreateDirectoryPOptions.Builder) mOptionsBuilder;
       if (cb.hasCommonOptions() && cb.getCommonOptions().hasOpId()) {
-        return cb.getCommonOptions().getOpId();
+        return FsOpId.fromFsProto(cb.getCommonOptions().getOpId());
       }
     } else if (mOptionsBuilder instanceof DeletePOptions.Builder) {
       DeletePOptions.Builder cb = (DeletePOptions.Builder) mOptionsBuilder;
       if (cb.hasCommonOptions() && cb.getCommonOptions().hasOpId()) {
-        return cb.getCommonOptions().getOpId();
+        return FsOpId.fromFsProto(cb.getCommonOptions().getOpId());
       }
     } else if (mOptionsBuilder instanceof RenamePOptions.Builder) {
       RenamePOptions.Builder cb = (RenamePOptions.Builder) mOptionsBuilder;
       if (cb.hasCommonOptions() && cb.getCommonOptions().hasOpId()) {
-        return cb.getCommonOptions().getOpId();
+        return FsOpId.fromFsProto(cb.getCommonOptions().getOpId());
       }
     } else if (mOptionsBuilder instanceof CompleteFilePOptions.Builder) {
       CompleteFilePOptions.Builder cb = (CompleteFilePOptions.Builder) mOptionsBuilder;
       if (cb.hasCommonOptions() && cb.getCommonOptions().hasOpId()) {
-        return cb.getCommonOptions().getOpId();
+        return FsOpId.fromFsProto(cb.getCommonOptions().getOpId());
       }
     }
 

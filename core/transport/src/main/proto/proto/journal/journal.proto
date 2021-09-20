@@ -16,6 +16,11 @@ import "proto/journal/table.proto";
 // and Spark. We use protobuf version 2.5.0 instead, which is compatible with Hadoop and Spark.
 //
 
+message JournalOpId {
+    optional int64 mostSignificantBits = 1;
+    optional int64 leastSignificantBits = 2;
+}
+
 // next available id: 52
 message JournalEntry {
   optional int64 sequence_number = 1;
@@ -55,7 +60,7 @@ message JournalEntry {
   optional UpdateInodeEntry update_inode = 35;
   optional UpdateInodeDirectoryEntry update_inode_directory = 36;
   optional UpdateInodeFileEntry update_inode_file = 37;
-  optional string fs_op_id = 100;
+  optional JournalOpId fs_op_id = 100;
 
   // This journal entry is a list of other entries. when a journal entry
   // contains other journal entries, all other optional fields must be unset.
