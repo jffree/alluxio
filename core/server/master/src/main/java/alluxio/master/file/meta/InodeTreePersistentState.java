@@ -11,10 +11,13 @@
 
 package alluxio.master.file.meta;
 
+import static alluxio.conf.PropertyKey.MASTER_FILE_SYSTEM_RETRY_CACHE_ENABLED;
+import static alluxio.conf.PropertyKey.MASTER_FILE_SYSTEM_RETRY_CACHE_SIZE;
 import static alluxio.conf.PropertyKey.MASTER_METRICS_FILE_SIZE_DISTRIBUTION_BUCKETS;
 
 import alluxio.ProcessUtils;
 import alluxio.conf.ServerConfiguration;
+import alluxio.master.file.RpcContext;
 import alluxio.master.journal.JournalContext;
 import alluxio.master.journal.JournalUtils;
 import alluxio.master.journal.Journaled;
@@ -45,8 +48,11 @@ import alluxio.util.BucketCounter;
 import alluxio.util.FormatUtils;
 import alluxio.util.StreamUtils;
 import alluxio.util.proto.ProtoUtils;
+import alluxio.wire.FsOpId;
 
 import com.google.common.base.Preconditions;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,6 +83,9 @@ public class InodeTreePersistentState implements Journaled {
 
   private final InodeStore mInodeStore;
   private final InodeLockManager mInodeLockManager;
+
+  private final boolean mRetryCacheEnabled;
+  private final Cache<FsOpId, Boolean> mCache;
 
   /**
    * A set of inode ids representing pinned inode files. These are not part of the journaled state,
@@ -119,6 +128,19 @@ public class InodeTreePersistentState implements Journaled {
     mBucketCounter = new BucketCounter(
         ServerConfiguration.getList(MASTER_METRICS_FILE_SIZE_DISTRIBUTION_BUCKETS, ",")
             .stream().map(FormatUtils::parseSpaceSize).collect(Collectors.toList()));
+    mRetryCacheEnabled = ServerConfiguration.getBoolean(MASTER_FILE_SYSTEM_RETRY_CACHE_ENABLED);
+    mCache = CacheBuilder.newBuilder()
+        .maximumSize(ServerConfiguration.getInt(MASTER_FILE_SYSTEM_RETRY_CACHE_SIZE)).build();
+  }
+
+  /**
+   * whether given op is complete.
+   *
+   * @param op op id
+   * @return {@code true} if given op is complete
+   */
+  public boolean isOpComplete(FsOpId op) {
+    return mRetryCacheEnabled && (null != mCache.getIfPresent(op));
   }
 
   /**
@@ -180,7 +202,12 @@ public class InodeTreePersistentState implements Journaled {
     // creation entry because delete requires a write lock on the deleted file, but the create
     // operation holds that lock until after it has appended to the journal.
     try {
-      context.get().append(JournalEntry.newBuilder().setDeleteFile(entry).build());
+      JournalEntry.Builder builder = JournalEntry.newBuilder().setDeleteFile(entry);
+      FsOpId opId = getOpId(context);
+      if (opId != null) {
+        builder.setFsOpId(opId.toJournalProto());
+      }
+      context.get().append(builder.build());
       applyDelete(entry);
     } catch (Throwable t) {
       // Delete entries should always apply cleanly, but if it somehow fails, we are in a state
@@ -217,7 +244,12 @@ public class InodeTreePersistentState implements Journaled {
   public void applyAndJournal(Supplier<JournalContext> context, RenameEntry entry) {
     try {
       applyRename(entry);
-      context.get().append(JournalEntry.newBuilder().setRename(entry).build());
+      JournalEntry.Builder builder = JournalEntry.newBuilder().setRename(entry);
+      FsOpId opId = getOpId(context);
+      if (opId != null) {
+        builder.setFsOpId(opId.toJournalProto());
+      }
+      context.get().append(builder.build());
     } catch (Throwable t) {
       ProcessUtils.fatalError(LOG, t, "Failed to apply %s", entry);
       throw t; // fatalError will usually system.exit
@@ -249,7 +281,12 @@ public class InodeTreePersistentState implements Journaled {
   public void applyAndJournal(Supplier<JournalContext> context, UpdateInodeEntry entry) {
     try {
       applyUpdateInode(entry);
-      context.get().append(JournalEntry.newBuilder().setUpdateInode(entry).build());
+      JournalEntry.Builder builder = JournalEntry.newBuilder().setUpdateInode(entry);
+      FsOpId opId = getOpId(context);
+      if (opId != null) {
+        builder.setFsOpId(opId.toJournalProto());
+      }
+      context.get().append(builder.build());
     } catch (Throwable t) {
       ProcessUtils.fatalError(LOG, t, "Failed to apply %s", entry);
       throw t; // fatalError will usually system.exit
@@ -299,8 +336,13 @@ public class InodeTreePersistentState implements Journaled {
       String path) {
     try {
       applyCreateInode(inode);
-      context.get().append(inode.toJournalEntry(
-          Preconditions.checkNotNull(path)));
+      JournalEntry.Builder builder =
+          inode.toJournalEntry(Preconditions.checkNotNull(path)).toBuilder();
+      FsOpId opId = getOpId(context);
+      if (opId != null) {
+        builder.setFsOpId(opId.toJournalProto());
+      }
+      context.get().append(builder.build());
     } catch (Throwable t) {
       ProcessUtils.fatalError(LOG, t, "Failed to apply %s", inode);
       throw t; // fatalError will usually system.exit
@@ -453,6 +495,13 @@ public class InodeTreePersistentState implements Journaled {
         mReplicationLimitedFileIds.add(file.getId());
       }
     }
+  }
+
+  private FsOpId getOpId(Supplier<JournalContext> context) {
+    if (context instanceof RpcContext) {
+      return ((RpcContext) context).getOpId();
+    }
+    return null;
   }
 
   /**
@@ -687,6 +736,9 @@ public class InodeTreePersistentState implements Journaled {
 
   @Override
   public boolean processJournalEntry(JournalEntry entry) {
+    if (mRetryCacheEnabled && entry.hasFsOpId()) {
+      mCache.put(FsOpId.fromJournalProto(entry.getFsOpId()), true);
+    }
     if (entry.hasDeleteFile()) {
       applyDelete(entry.getDeleteFile());
     } else if (entry.hasInodeDirectory()) {

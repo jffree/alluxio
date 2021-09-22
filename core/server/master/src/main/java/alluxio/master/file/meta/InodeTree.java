@@ -56,6 +56,7 @@ import alluxio.underfs.UnderFileSystem;
 import alluxio.underfs.options.MkdirsOptions;
 import alluxio.util.CommonUtils;
 import alluxio.util.interfaces.Scoped;
+import alluxio.wire.FsOpId;
 
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
@@ -220,6 +221,16 @@ public class InodeTree implements DelegatingJournaled {
     mContainerIdGenerator = containerIdGenerator;
     mDirectoryIdGenerator = directoryIdGenerator;
     mMountTable = mountTable;
+  }
+
+  /**
+   * whether given op is complete.
+   *
+   * @param op op id
+   * @return {@code true} if given op is complete
+   */
+  public boolean isOpComplete(FsOpId op) {
+    return mState.isOpComplete(op);
   }
 
   /**

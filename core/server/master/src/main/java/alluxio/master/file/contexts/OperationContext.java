@@ -11,6 +11,13 @@
 
 package alluxio.master.file.contexts;
 
+import alluxio.grpc.CreateDirectoryPOptions;
+import alluxio.grpc.CreateFilePOptions;
+import alluxio.grpc.DeletePOptions;
+import alluxio.grpc.RenamePOptions;
+import alluxio.grpc.CompleteFilePOptions;
+import alluxio.wire.FsOpId;
+
 import com.google.protobuf.GeneratedMessageV3;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -57,6 +64,42 @@ public class OperationContext<T extends GeneratedMessageV3.Builder, C extends Op
   public C withTracker(CallTracker tracker) {
     mCallTrackers.add(tracker);
     return (C) this;
+  }
+
+  /**
+   * Get embedded op-id.
+   * TODO(ggezer) avoid this.
+   * @return op-id
+   */
+  public FsOpId getOpId() {
+    if (mOptionsBuilder instanceof CreateFilePOptions.Builder) {
+      CreateFilePOptions.Builder cb = (CreateFilePOptions.Builder) mOptionsBuilder;
+      if (cb.hasCommonOptions() && cb.getCommonOptions().hasOpId()) {
+        return FsOpId.fromFsProto(cb.getCommonOptions().getOpId());
+      }
+    } else if (mOptionsBuilder instanceof CreateDirectoryPOptions.Builder) {
+      CreateDirectoryPOptions.Builder cb = (CreateDirectoryPOptions.Builder) mOptionsBuilder;
+      if (cb.hasCommonOptions() && cb.getCommonOptions().hasOpId()) {
+        return FsOpId.fromFsProto(cb.getCommonOptions().getOpId());
+      }
+    } else if (mOptionsBuilder instanceof DeletePOptions.Builder) {
+      DeletePOptions.Builder cb = (DeletePOptions.Builder) mOptionsBuilder;
+      if (cb.hasCommonOptions() && cb.getCommonOptions().hasOpId()) {
+        return FsOpId.fromFsProto(cb.getCommonOptions().getOpId());
+      }
+    } else if (mOptionsBuilder instanceof RenamePOptions.Builder) {
+      RenamePOptions.Builder cb = (RenamePOptions.Builder) mOptionsBuilder;
+      if (cb.hasCommonOptions() && cb.getCommonOptions().hasOpId()) {
+        return FsOpId.fromFsProto(cb.getCommonOptions().getOpId());
+      }
+    } else if (mOptionsBuilder instanceof CompleteFilePOptions.Builder) {
+      CompleteFilePOptions.Builder cb = (CompleteFilePOptions.Builder) mOptionsBuilder;
+      if (cb.hasCommonOptions() && cb.getCommonOptions().hasOpId()) {
+        return FsOpId.fromFsProto(cb.getCommonOptions().getOpId());
+      }
+    }
+
+    return null;
   }
 
   /**

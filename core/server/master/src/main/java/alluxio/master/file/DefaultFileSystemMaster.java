@@ -167,6 +167,7 @@ import alluxio.wire.FileBlockInfo;
 import alluxio.wire.FileInfo;
 import alluxio.wire.FileSystemCommand;
 import alluxio.wire.FileSystemCommandOptions;
+import alluxio.wire.FsOpId;
 import alluxio.wire.MountPointInfo;
 import alluxio.wire.PersistCommandOptions;
 import alluxio.wire.PersistFile;
@@ -1511,6 +1512,11 @@ public final class DefaultFileSystemMaster extends CoreMaster
     mInodeTree.updateInodeFile(rpcContext, entry.build());
 
     Metrics.FILES_COMPLETED.inc();
+  }
+
+  @Override
+  public boolean isOpComplete(FsOpId op) {
+    return mInodeTree.isOpComplete(op);
   }
 
   /**
