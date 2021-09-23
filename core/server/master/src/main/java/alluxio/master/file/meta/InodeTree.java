@@ -234,6 +234,14 @@ public class InodeTree implements DelegatingJournaled {
   }
 
   /**
+   * Used to mark an operation as complete in retry-cache.
+   * @param opId the operation id
+   */
+  public void opCompleted(FsOpId opId) {
+    mState.opCompleted(opId);
+  }
+
+  /**
    * Initializes the root of the inode tree.
    *
    * @param owner the root owner

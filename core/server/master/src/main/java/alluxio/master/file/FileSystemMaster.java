@@ -609,4 +609,10 @@ public interface FileSystemMaster extends Master {
    * @return {@code true} if given op is complete
    */
   boolean isOpComplete(FsOpId op);
+
+  /**
+   * Used to mark an operation as complete in retry-cache.
+   * @param opId the operation id
+   */
+  void opCompleted(FsOpId opId);
 }

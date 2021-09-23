@@ -39,6 +39,7 @@ import alluxio.proto.journal.File.UpdateInodeDirectoryEntry;
 import alluxio.proto.journal.File.UpdateInodeEntry;
 import alluxio.proto.journal.File.UpdateInodeEntry.Builder;
 import alluxio.proto.journal.File.UpdateInodeFileEntry;
+import alluxio.proto.journal.Journal;
 import alluxio.proto.journal.Journal.JournalEntry;
 import alluxio.resource.CloseableIterator;
 import alluxio.resource.LockResource;
@@ -141,6 +142,16 @@ public class InodeTreePersistentState implements Journaled {
    */
   public boolean isOpComplete(FsOpId op) {
     return mRetryCacheEnabled && (null != mCache.getIfPresent(op));
+  }
+
+  /**
+   * Used to mark an operation as complete in retry-cache.
+   * @param opId the operation id
+   */
+  public void opCompleted(FsOpId opId) {
+    if (mRetryCacheEnabled) {
+      mCache.put(opId, true);
+    }
   }
 
   /**
@@ -736,9 +747,11 @@ public class InodeTreePersistentState implements Journaled {
 
   @Override
   public boolean processJournalEntry(JournalEntry entry) {
-    if (mRetryCacheEnabled && entry.hasFsOpId()) {
-      mCache.put(FsOpId.fromJournalProto(entry.getFsOpId()), true);
+    // Account for entry in retry-cache.
+    if (entry.hasFsOpId()) {
+      opCompleted(FsOpId.fromJournalProto(entry.getFsOpId()));
     }
+    // Apply entry.
     if (entry.hasDeleteFile()) {
       applyDelete(entry.getDeleteFile());
     } else if (entry.hasInodeDirectory()) {
@@ -779,6 +792,8 @@ public class InodeTreePersistentState implements Journaled {
     mInodeStore.clear();
     mReplicationLimitedFileIds.clear();
     mPinnedInodeFileIds.clear();
+    mCache.invalidateAll();
+    mCache.cleanUp();
   }
 
   @Override

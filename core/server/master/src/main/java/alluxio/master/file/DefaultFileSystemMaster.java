@@ -1519,6 +1519,11 @@ public final class DefaultFileSystemMaster extends CoreMaster
     return mInodeTree.isOpComplete(op);
   }
 
+  @Override
+  public void opCompleted(FsOpId opId) {
+    mInodeTree.opCompleted(opId);
+  }
+
   /**
    * Commits blocks to BlockMaster for given block list.
    *

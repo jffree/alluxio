@@ -89,6 +89,7 @@ import alluxio.master.file.contexts.ScheduleAsyncPersistenceContext;
 import alluxio.master.file.contexts.SetAclContext;
 import alluxio.master.file.contexts.SetAttributeContext;
 import alluxio.underfs.UfsMode;
+import alluxio.wire.FileInfo;
 import alluxio.wire.FsOpId;
 import alluxio.wire.MountPointInfo;
 import alluxio.wire.SyncPointInfo;
@@ -156,12 +157,13 @@ public final class FileSystemMasterClientServiceHandler
       StreamObserver<CompleteFilePResponse> responseObserver) {
     RpcUtils.call(LOG, () -> {
       if (checkOperationComplete(request.getOptions().getCommonOptions())) {
-        LOG.info("YASS! Returning from completeFile.");
+        LOG.info("YASS! Returning from completeFile: {}", request);
         return CompleteFilePResponse.getDefaultInstance();
       }
       AlluxioURI pathUri = getAlluxioURI(request.getPath());
       mFileSystemMaster.completeFile(pathUri,
           CompleteFileContext.create(request.getOptions().toBuilder()));
+      setOperationComplete(request.getOptions().getCommonOptions());
       return CompleteFilePResponse.newBuilder().build();
     }, "CompleteFile", "request=%s", responseObserver, request);
   }
@@ -172,12 +174,13 @@ public final class FileSystemMasterClientServiceHandler
     CreateDirectoryPOptions options = request.getOptions();
     RpcUtils.call(LOG, () -> {
       if (checkOperationComplete(request.getOptions().getCommonOptions())) {
-        LOG.info("YASS! Returning from createDirectory.");
+        LOG.info("YASS! Returning from createDirectory: {}", request);
         return CreateDirectoryPResponse.getDefaultInstance();
       }
       AlluxioURI pathUri = getAlluxioURI(request.getPath());
       mFileSystemMaster.createDirectory(pathUri, CreateDirectoryContext.create(options.toBuilder())
           .withTracker(new GrpcCallTracker(responseObserver)));
+      setOperationComplete(request.getOptions().getCommonOptions());
       return CreateDirectoryPResponse.newBuilder().build();
     }, "CreateDirectory", "request=%s", responseObserver, request);
   }
@@ -187,7 +190,7 @@ public final class FileSystemMasterClientServiceHandler
       StreamObserver<CreateFilePResponse> responseObserver) {
     RpcUtils.call(LOG, () -> {
       if (checkOperationComplete(request.getOptions().getCommonOptions())) {
-        LOG.info("YASS! Returning from createFile.");
+        LOG.info("YASS! Returning from createFile: {}", request);
         alluxio.wire.FileInfo fileInfo =
             mFileSystemMaster.getFileInfo(getAlluxioURI(request.getPath()),
                 GetStatusContext.create(GetStatusPOptions.newBuilder()
@@ -197,11 +200,11 @@ public final class FileSystemMasterClientServiceHandler
         return CreateFilePResponse.newBuilder().setFileInfo(GrpcUtils.toProto(fileInfo)).build();
       }
       AlluxioURI pathUri = getAlluxioURI(request.getPath());
-      return CreateFilePResponse.newBuilder()
-          .setFileInfo(GrpcUtils.toProto(mFileSystemMaster.createFile(pathUri,
+      FileInfo newFileInfo = mFileSystemMaster.createFile(pathUri,
               CreateFileContext.create(request.getOptions().toBuilder())
-                  .withTracker(new GrpcCallTracker(responseObserver)))))
-          .build();
+                      .withTracker(new GrpcCallTracker(responseObserver)));
+      setOperationComplete(request.getOptions().getCommonOptions());
+      return CreateFilePResponse.newBuilder().setFileInfo(GrpcUtils.toProto(newFileInfo)).build();
     }, "CreateFile", "request=%s", responseObserver, request);
   }
 
@@ -325,12 +328,13 @@ public final class FileSystemMasterClientServiceHandler
   public void remove(DeletePRequest request, StreamObserver<DeletePResponse> responseObserver) {
     RpcUtils.call(LOG, () -> {
       if (checkOperationComplete(request.getOptions().getCommonOptions())) {
-        LOG.info("YASS! Returning from remove.");
+        LOG.info("YASS! Returning from remove: {}", request);
         return DeletePResponse.getDefaultInstance();
       }
       AlluxioURI pathUri = getAlluxioURI(request.getPath());
       mFileSystemMaster.delete(pathUri, DeleteContext.create(request.getOptions().toBuilder())
           .withTracker(new GrpcCallTracker(responseObserver)));
+      setOperationComplete(request.getOptions().getCommonOptions());
       return DeletePResponse.newBuilder().build();
     }, "Remove", "request=%s", responseObserver, request);
   }
@@ -339,7 +343,7 @@ public final class FileSystemMasterClientServiceHandler
   public void rename(RenamePRequest request, StreamObserver<RenamePResponse> responseObserver) {
     RpcUtils.call(LOG, () -> {
       if (checkOperationComplete(request.getOptions().getCommonOptions())) {
-        LOG.info("YASS! Returning from rename.");
+        LOG.info("YASS! Returning from rename: {}", request);
         return RenamePResponse.getDefaultInstance();
       }
       AlluxioURI srcPathUri = getAlluxioURI(request.getPath());
@@ -347,6 +351,7 @@ public final class FileSystemMasterClientServiceHandler
       mFileSystemMaster.rename(srcPathUri, dstPathUri,
           RenameContext.create(request.getOptions().toBuilder())
               .withTracker(new GrpcCallTracker(responseObserver)));
+      setOperationComplete(request.getOptions().getCommonOptions());
       return RenamePResponse.newBuilder().build();
     }, "Rename", "request=%s", responseObserver, request);
   }
@@ -454,6 +459,12 @@ public final class FileSystemMasterClientServiceHandler
   private boolean checkOperationComplete(FileSystemMasterCommonPOptions commonOpts) {
     return commonOpts != null && commonOpts.hasOpId()
         && mFileSystemMaster.isOpComplete(FsOpId.fromFsProto(commonOpts.getOpId()));
+  }
+
+  private void setOperationComplete(FileSystemMasterCommonPOptions commonOpts) {
+    if (commonOpts != null && commonOpts.hasOpId()) {
+      mFileSystemMaster.opCompleted(FsOpId.fromFsProto(commonOpts.getOpId()));
+    }
   }
 
   /**
